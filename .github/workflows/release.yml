@@ -67,6 +67,12 @@ jobs:
           cp build/binary/extracted/maestro "Maestro App Factory/Maestro App Factory/maestro"
           chmod +x "Maestro App Factory/Maestro App Factory/maestro"
 
+      - name: Resolve signing identity
+        run: |
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+          echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
+          echo "Found identity: $SIGNING_IDENTITY"
+
       - name: Build and archive
         run: |
           xcodebuild -project "Maestro App Factory/Maestro App Factory.xcodeproj" \
@@ -74,6 +80,9 @@ jobs:
             -configuration Release \
             -destination "platform=macOS" \
             -archivePath build/MaestroAppFactory.xcarchive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+            DEVELOPMENT_TEAM=VNJH3VB68C \
             archive
 
       - name: Export archive
