@@ -10,6 +10,7 @@ enum MaestroStatus: Equatable {
     case stopped
     case starting
     case running
+    case stopping
     case error(String)
 }
 
@@ -56,7 +57,7 @@ class AppState {
             if self.status == .running {
                 // Unexpected termination
                 self.status = .error("Maestro exited unexpectedly (code \(status))")
-            } else {
+            } else if self.status != .stopping && self.status != .starting {
                 self.status = .stopped
             }
         }
@@ -163,9 +164,9 @@ class AppState {
     }
 
     func restartMaestro() async {
-        stopMaestro()
-        // Brief pause to let process fully terminate
-        try? await Task.sleep(for: .seconds(1))
+        status = .stopping
+        await processManager.stopAndWaitForPortRelease(port: port)
+        status = .stopped
         await startMaestro()
     }
 }

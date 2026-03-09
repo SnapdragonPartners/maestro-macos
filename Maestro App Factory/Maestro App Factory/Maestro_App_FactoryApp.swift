@@ -40,7 +40,7 @@ struct Maestro_App_FactoryApp: App {
         switch appState.status {
         case .running:
             return "circle.fill"
-        case .starting:
+        case .starting, .stopping:
             return "circle.dotted"
         case .stopped:
             return "circle"

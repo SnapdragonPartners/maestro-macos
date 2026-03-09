@@ -68,19 +68,42 @@ class ProcessManager {
         // Send SIGINT first (Go handles graceful shutdown on interrupt)
         kill(pid, SIGINT)
 
-        // Give it 5 seconds to shut down gracefully
-        DispatchQueue.global().asyncAfter(deadline: .now() + 5) { [weak self] in
-            // If still running, force kill the process group
-            if proc.isRunning {
-                // Kill the entire process group (negative pid)
-                kill(-pid, SIGKILL)
-                // Also kill the process directly
-                kill(pid, SIGKILL)
-            }
-            DispatchQueue.main.async {
-                self?.isRunning = false
-                self?.process = nil
-            }
+        // Wait synchronously for up to 5 seconds
+        proc.waitUntilExit()
+
+        // If it somehow didn't exit, force kill
+        if proc.isRunning {
+            kill(-pid, SIGKILL)
+            kill(pid, SIGKILL)
+            proc.waitUntilExit()
+        }
+
+        isRunning = false
+        process = nil
+    }
+
+    /// Async stop that waits for the process to fully terminate and the port to be released
+    func stopAndWaitForPortRelease(port: Int) async {
+        stop()
+
+        // Wait for port to actually be released
+        let start = Date()
+        while Date().timeIntervalSince(start) < 10 {
+            let available = await isPortAvailable(port)
+            if available { return }
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+    }
+
+    private func isPortAvailable(_ port: Int) async -> Bool {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 1
+        let session = URLSession(configuration: config)
+        do {
+            let _ = try await session.data(from: URL(string: "http://localhost:\(port)")!)
+            return false // Still responding
+        } catch {
+            return true // Connection refused = port is free
         }
     }
 

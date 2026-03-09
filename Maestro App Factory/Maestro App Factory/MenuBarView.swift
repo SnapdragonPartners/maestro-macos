@@ -20,6 +20,8 @@ struct MenuBarView: View {
             return "\u{1F7E2} Maestro is running"
         case .starting:
             return "\u{1F7E1} Maestro is starting..."
+        case .stopping:
+            return "\u{1F7E1} Maestro is stopping..."
         case .stopped:
             return "\u{1F534} Maestro is stopped"
         case .error:
