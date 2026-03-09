@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Maestro App Factory</title>
+    <link>https://snapdragonpartners.github.io/maestro-macos/appcast.xml</link>
+    <description>Maestro App Factory Updates</description>
+  </channel>
+</rss>
