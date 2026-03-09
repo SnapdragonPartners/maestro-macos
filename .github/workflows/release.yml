@@ -1,0 +1,161 @@
+name: Build and Release DMG
+
+on:
+  workflow_dispatch:
+    inputs:
+      maestro_version:
+        description: 'Maestro release tag (e.g. v1.3.3)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    env:
+      MAESTRO_VERSION: ${{ github.event.inputs.maestro_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse version
+        run: |
+          # Strip leading 'v' if present for asset filenames
+          VERSION="${MAESTRO_VERSION#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Install signing certificate
+        env:
+          CERTIFICATE_P12: ${{ secrets.CERTIFICATE_P12 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "$CERTIFICATE_P12" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 \
+            -k "$KEYCHAIN_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/productsign
+
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+      - name: Download Maestro binary
+        run: |
+          mkdir -p build/binary
+          gh release download "${MAESTRO_VERSION}" \
+            --repo SnapdragonPartners/maestro \
+            --pattern "maestro_${VERSION}_darwin_arm64.zip" \
+            --dir build/binary
+
+          unzip -o "build/binary/maestro_${VERSION}_darwin_arm64.zip" -d build/binary/extracted
+          chmod +x build/binary/extracted/maestro
+          cp build/binary/extracted/maestro "Maestro App Factory/Maestro App Factory/maestro"
+          chmod +x "Maestro App Factory/Maestro App Factory/maestro"
+
+      - name: Build and archive
+        run: |
+          xcodebuild -project "Maestro App Factory/Maestro App Factory.xcodeproj" \
+            -scheme "Maestro App Factory" \
+            -configuration Release \
+            -destination "platform=macOS" \
+            -archivePath build/MaestroAppFactory.xcarchive \
+            archive
+
+      - name: Export archive
+        run: |
+          cat > build/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>developer-id</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath build/MaestroAppFactory.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist build/ExportOptions.plist
+
+      - name: Sign embedded binary and create DMG
+        run: |
+          APP_PATH="build/export/Maestro App Factory.app"
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+
+          codesign --force --sign "$SIGNING_IDENTITY" \
+            --options runtime --timestamp \
+            "$APP_PATH/Contents/Resources/maestro"
+
+          codesign --force --sign "$SIGNING_IDENTITY" \
+            --options runtime --timestamp \
+            "$APP_PATH"
+
+          codesign --verify --deep --strict "$APP_PATH"
+
+          DMG_STAGING="build/dmg-staging"
+          mkdir -p "$DMG_STAGING"
+          cp -R "$APP_PATH" "$DMG_STAGING/"
+          ln -s /Applications "$DMG_STAGING/Applications"
+
+          DMG_PATH="build/MaestroAppFactory-${MAESTRO_VERSION}.dmg"
+
+          hdiutil create -volname "Maestro App Factory" \
+            -srcfolder "$DMG_STAGING" \
+            -ov -format UDZO \
+            "$DMG_PATH"
+
+          codesign --sign "$SIGNING_IDENTITY" --timestamp "$DMG_PATH"
+
+          echo "DMG_PATH=$DMG_PATH" >> $GITHUB_ENV
+
+      - name: Notarize DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          xcrun notarytool submit "$DMG_PATH" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --wait
+
+          xcrun stapler staple "$DMG_PATH"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${MAESTRO_VERSION}" \
+            "$DMG_PATH" \
+            --title "Maestro App Factory ${MAESTRO_VERSION}" \
+            --notes "macOS menu bar app for Maestro ${MAESTRO_VERSION}
+
+          ## Installation
+          1. Download \`MaestroAppFactory-${MAESTRO_VERSION}.dmg\`
+          2. Open the DMG and drag **Maestro App Factory** to Applications
+          3. Launch from Applications
+
+          Requires Docker Desktop and macOS 14+."
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain $RUNNER_TEMP/build.keychain-db 2>/dev/null || true

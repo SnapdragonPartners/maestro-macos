@@ -19,8 +19,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROJECT_DIR="$PROJECT_ROOT/Maestro App Factory"
 BUILD_DIR="$PROJECT_ROOT/build"
-MAESTRO_VERSION="${MAESTRO_VERSION:-1.3.3}"
 REPO="SnapdragonPartners/maestro"
+
+# Get latest release version if not specified
+if [[ -z "${MAESTRO_VERSION:-}" ]]; then
+    MAESTRO_VERSION=$(gh release view --repo "$REPO" --json tagName -q .tagName)
+    echo "    (auto-detected latest release)"
+fi
 NOTARIZE=false
 
 if [[ "${1:-}" == "--notarize" ]]; then
