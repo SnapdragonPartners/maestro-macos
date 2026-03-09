@@ -9,5 +9,8 @@ build/
 # Bundled Go binary (too large for git, added at build time)
 Maestro App Factory/Maestro App Factory/maestro
 
+# Build output
+build/
+
 # macOS
 .DS_Store
