@@ -53,6 +53,8 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
 
       - name: Download Maestro binary
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p build/binary
           gh release download "${MAESTRO_VERSION}" \
