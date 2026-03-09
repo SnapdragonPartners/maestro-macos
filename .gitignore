@@ -1,0 +1,13 @@
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# Build products
+DerivedData/
+build/
+
+# Bundled Go binary (too large for git, added at build time)
+Maestro App Factory/Maestro App Factory/maestro
+
+# macOS
+.DS_Store
