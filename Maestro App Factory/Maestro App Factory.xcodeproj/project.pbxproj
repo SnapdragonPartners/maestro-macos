@@ -112,6 +112,7 @@
 			);
 			name = "Maestro App Factory";
 			packageProductDependencies = (
+				AA000002SPARKLE000000001 /* Sparkle */,
 			);
 			productName = "Maestro App Factory";
 			productReference = 346A67F32F5F44BE008E7019 /* Maestro App Factory.app */;
@@ -197,6 +198,9 @@
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 346A67F42F5F44BE008E7019 /* Products */;
+			packageReferences = (
+				AA000001SPARKLE000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -267,6 +271,25 @@
 			targetProxy = 346A680B2F5F44BF008E7019 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AA000001SPARKLE000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA000002SPARKLE000000001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA000001SPARKLE000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		346A68122F5F44BF008E7019 /* Debug */ = {
@@ -398,6 +421,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_SUFeedURL = "https://snapdragonpartners.github.io/maestro-macos/appcast.xml";
+				INFOPLIST_KEY_SUPublicEDKey = "t4SNpPSoZEnedX+MMUph3ypNxXSzOfV5H91BNeV37x0=";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
@@ -427,6 +452,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_SUFeedURL = "https://snapdragonpartners.github.io/maestro-macos/appcast.xml";
+				INFOPLIST_KEY_SUPublicEDKey = "t4SNpPSoZEnedX+MMUph3ypNxXSzOfV5H91BNeV37x0=";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;

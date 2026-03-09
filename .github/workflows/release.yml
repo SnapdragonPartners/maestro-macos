@@ -13,6 +13,7 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: write
+      pages: write
 
     env:
       MAESTRO_VERSION: ${{ github.event.inputs.maestro_version }}
@@ -20,10 +21,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Parse version
         run: |
-          # Strip leading 'v' if present for asset filenames
           VERSION="${MAESTRO_VERSION#v}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -52,6 +54,15 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
 
+      - name: Install Sparkle signing key
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          # Import the EdDSA private key into Sparkle's expected location
+          mkdir -p ~/Library/Preferences
+          echo "$SPARKLE_PRIVATE_KEY" | base64 --decode > $RUNNER_TEMP/sparkle_private_key
+          # Sparkle's generate_keys stores in keychain, but sign_update can take key from file
+
       - name: Download Maestro binary
         env:
           GH_TOKEN: ${{ github.token }}
@@ -73,6 +84,12 @@ jobs:
           echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
           echo "Found identity: $SIGNING_IDENTITY"
 
+      - name: Resolve package dependencies
+        run: |
+          xcodebuild -project "Maestro App Factory/Maestro App Factory.xcodeproj" \
+            -scheme "Maestro App Factory" \
+            -resolvePackageDependencies
+
       - name: Build and archive
         run: |
           xcodebuild -project "Maestro App Factory/Maestro App Factory.xcodeproj" \
@@ -83,6 +100,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
             DEVELOPMENT_TEAM=VNJH3VB68C \
+            MARKETING_VERSION="${VERSION}" \
             archive
 
       - name: Export archive
@@ -108,7 +126,6 @@ jobs:
       - name: Sign embedded binary and create DMG
         run: |
           APP_PATH="build/export/Maestro App Factory.app"
-          SIGNING_IDENTITY=$(security find-identity -v -p codesigning | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
 
           codesign --force --sign "$SIGNING_IDENTITY" \
             --options runtime --timestamp \
@@ -150,6 +167,78 @@ jobs:
 
           xcrun stapler staple "$DMG_PATH"
 
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          # Find Sparkle tools from resolved packages
+          SPARKLE_BIN=$(find ~/Library/Developer/Xcode -path "*/artifacts/sparkle/Sparkle/bin" -type d 2>/dev/null | head -1)
+
+          if [[ -z "$SPARKLE_BIN" ]]; then
+            echo "ERROR: Sparkle tools not found"
+            exit 1
+          fi
+
+          # Sign the DMG with Sparkle EdDSA key
+          DMG_SIZE=$(stat -f%z "$DMG_PATH")
+          SIGNATURE=$("$SPARKLE_BIN/sign_update" "$DMG_PATH" --ed-key-file $RUNNER_TEMP/sparkle_private_key | grep "sparkle:edSignature" | sed 's/.*sparkle:edSignature="\([^"]*\)".*/\1/')
+
+          DMG_URL="https://github.com/SnapdragonPartners/maestro-macos/releases/download/${MAESTRO_VERSION}/MaestroAppFactory-${MAESTRO_VERSION}.dmg"
+
+          # Checkout or create gh-pages branch
+          git checkout gh-pages 2>/dev/null || git checkout --orphan gh-pages
+
+          # Keep only the appcast file
+          git rm -rf . 2>/dev/null || true
+
+          # Download existing appcast if it exists
+          curl -sSf "https://snapdragonpartners.github.io/maestro-macos/appcast.xml" -o appcast.xml 2>/dev/null || true
+
+          # Generate new appcast entry
+          if [[ ! -f appcast.xml ]]; then
+            cat > appcast.xml << APPCAST_HEADER
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>Maestro App Factory</title>
+              <link>https://snapdragonpartners.github.io/maestro-macos/appcast.xml</link>
+              <description>Maestro App Factory Updates</description>
+            </channel>
+          </rss>
+          APPCAST_HEADER
+          fi
+
+          # Insert new item before closing </channel> tag
+          NEW_ITEM="    <item>\n      <title>Maestro App Factory ${MAESTRO_VERSION}</title>\n      <pubDate>$(date -R)</pubDate>\n      <sparkle:version>${VERSION}</sparkle:version>\n      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>\n      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>\n      <description><![CDATA[<p>Maestro App Factory for Maestro ${MAESTRO_VERSION}</p>]]></description>\n      <enclosure url=\"${DMG_URL}\" length=\"${DMG_SIZE}\" type=\"application/octet-stream\" sparkle:edSignature=\"${SIGNATURE}\" />\n    </item>"
+
+          # Use python for reliable XML insertion
+          python3 -c "
+          import re
+          with open('appcast.xml', 'r') as f:
+              content = f.read()
+          item = '''    <item>
+                <title>Maestro App Factory ${MAESTRO_VERSION}</title>
+                <pubDate>$(date -R)</pubDate>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                <description><![CDATA[<p>Maestro App Factory for Maestro ${MAESTRO_VERSION}</p>]]></description>
+                <enclosure url=\"${DMG_URL}\" length=\"${DMG_SIZE}\" type=\"application/octet-stream\" sparkle:edSignature=\"${SIGNATURE}\" />
+              </item>'''
+          content = content.replace('</channel>', item + '\n  </channel>')
+          with open('appcast.xml', 'w') as f:
+              f.write(content)
+          "
+
+          git add appcast.xml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update appcast for ${MAESTRO_VERSION}"
+          git push origin gh-pages
+
+          # Switch back to main
+          git checkout main
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -163,6 +252,8 @@ jobs:
           1. Download \`MaestroAppFactory-${MAESTRO_VERSION}.dmg\`
           2. Open the DMG and drag **Maestro App Factory** to Applications
           3. Launch from Applications
+
+          Existing users will be prompted to update automatically.
 
           Requires Docker Desktop and macOS 14+."
 

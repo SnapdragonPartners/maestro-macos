@@ -3,17 +3,20 @@
 //  Maestro App Factory
 //
 
+import Sparkle
 import SwiftUI
 
 @main
 struct Maestro_App_FactoryApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var appState = AppState()
+    private let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     var body: some Scene {
         MenuBarExtra("Maestro", systemImage: menuBarIcon) {
             MenuBarView(
                 appState: appState,
+                updater: updaterController.updater,
                 onOpenWebUI: openWebUI,
                 onCopyPassword: copyPassword,
                 onSelectDirectory: selectDirectory,

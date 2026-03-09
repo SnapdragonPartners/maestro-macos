@@ -3,10 +3,13 @@
 //  Maestro App Factory
 //
 
+import Combine
+import Sparkle
 import SwiftUI
 
 struct MenuBarView: View {
     @Bindable var appState: AppState
+    let updater: SPUUpdater
     var onOpenWebUI: () -> Void
     var onCopyPassword: () -> Void
     var onSelectDirectory: () -> Void
@@ -75,9 +78,41 @@ struct MenuBarView: View {
 
         Divider()
 
+        CheckForUpdatesView(updater: updater)
+
         Button("Quit") {
             onQuit()
         }
         .keyboardShortcut("q")
+    }
+}
+
+struct CheckForUpdatesView: View {
+    @ObservedObject private var checkForUpdatesViewModel: CheckForUpdatesViewModel
+    let updater: SPUUpdater
+
+    init(updater: SPUUpdater) {
+        self.updater = updater
+        self.checkForUpdatesViewModel = CheckForUpdatesViewModel(updater: updater)
+    }
+
+    var body: some View {
+        Button("Check for Updates...") {
+            updater.checkForUpdates()
+        }
+        .disabled(!checkForUpdatesViewModel.canCheckForUpdates)
+    }
+}
+
+final class CheckForUpdatesViewModel: ObservableObject {
+    @Published var canCheckForUpdates = false
+    private var observation: Any?
+
+    init(updater: SPUUpdater) {
+        observation = updater.observe(\.canCheckForUpdates, options: [.initial, .new]) { [weak self] updater, change in
+            DispatchQueue.main.async {
+                self?.canCheckForUpdates = updater.canCheckForUpdates
+            }
+        }
     }
 }
