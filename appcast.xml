@@ -58,5 +58,14 @@
       <description><![CDATA[<p>Maestro App Factory for Maestro v1.3.3</p>]]></description>
       <enclosure url="https://github.com/SnapdragonPartners/maestro-macos/releases/download/v1.3.3/MaestroAppFactory-v1.3.3.dmg" length="25371737" type="application/octet-stream" sparkle:edSignature="5QRrvVA3BPfgA4mSgKnvFTsqq0cJWljuXkZ+vlHi8QoUlffr7gTN1CI9dQm88ju1LXsLtw8M8OHjStknt4wrBQ==" />
     </item>
+      <item>
+      <title>Maestro App Factory v1.3.4</title>
+      <pubDate>Tue, 10 Mar 2026 02:09:10 +0000</pubDate>
+      <sparkle:version>14</sparkle:version>
+      <sparkle:shortVersionString>1.3.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<p>Maestro App Factory for Maestro v1.3.4</p>]]></description>
+      <enclosure url="https://github.com/SnapdragonPartners/maestro-macos/releases/download/v1.3.4/MaestroAppFactory-v1.3.4.dmg" length="25373509" type="application/octet-stream" sparkle:edSignature="xqDcxEtPY8qymNJPFUnh32QeOSlpX6AdbPe70L3VTvtHDdd/LQEV9JjvB21EgIUYFBUGz2uE/nL+N6nCVUzGDQ==" />
+    </item>
   </channel>
 </rss>
