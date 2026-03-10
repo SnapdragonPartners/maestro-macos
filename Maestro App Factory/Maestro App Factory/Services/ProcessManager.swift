@@ -27,19 +27,12 @@ class ProcessManager {
         proc.executableURL = binaryURL
         proc.arguments = ["-projectdir", projectDirectory.path]
 
-        // Inherit parent environment and add our vars
-        var env = ProcessInfo.processInfo.environment
+        // The shell environment (from login shell) is the base — it has PATH,
+        // API keys, and everything the user would have in Terminal.
+        // We only add MAESTRO_PASSWORD and MAESTRO_SESSION_TOKEN on top.
+        var env = Self.resolveUserEnvironment()
         env["MAESTRO_PASSWORD"] = password
         env["MAESTRO_SESSION_TOKEN"] = sessionToken
-
-        // When launched from Finder/DMG, the environment is minimal — no PATH,
-        // no API keys, etc. Resolve the user's full shell environment.
-        let shellEnv = Self.resolveUserEnvironment()
-        for (key, value) in shellEnv {
-            if env[key] == nil {
-                env[key] = value
-            }
-        }
 
         proc.environment = env
 
