@@ -31,6 +31,13 @@ class ProcessManager {
         var env = ProcessInfo.processInfo.environment
         env["MAESTRO_PASSWORD"] = password
         env["MAESTRO_SESSION_TOKEN"] = sessionToken
+
+        // When launched from Finder/DMG, PATH is minimal and won't include
+        // Docker or Homebrew paths. Resolve the user's real PATH via login shell.
+        if let shellPath = Self.resolveUserPath() {
+            env["PATH"] = shellPath
+        }
+
         proc.environment = env
 
         proc.standardOutput = logFile
@@ -107,7 +114,29 @@ class ProcessManager {
         }
     }
 
-    func waitForPort(_ port: Int, timeout: TimeInterval = 60) async throws {
+    /// Resolve the user's full PATH by running a login shell.
+    /// This ensures we get the same PATH the user would have in Terminal,
+    /// including Homebrew, Docker, etc.
+    private static func resolveUserPath() -> String? {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        proc.arguments = ["-l", "-c", "echo $PATH"]
+        let pipe = Pipe()
+        proc.standardOutput = pipe
+        proc.standardError = FileHandle.nullDevice
+        do {
+            try proc.run()
+            proc.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !path.isEmpty {
+                return path
+            }
+        } catch {}
+        return nil
+    }
+
+    func waitForPort(_ port: Int, timeout: TimeInterval = 300) async throws {
         let start = Date()
         let url = URL(string: "http://localhost:\(port)")!
 

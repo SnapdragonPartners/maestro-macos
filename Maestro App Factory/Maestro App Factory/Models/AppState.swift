@@ -127,12 +127,17 @@ class AppState {
             return
         }
 
-        // Wait for server to be ready
+        // Wait for server to be ready (may take a while on first run due to Docker image build)
         do {
             try await processManager.waitForPort(port)
             status = .running
         } catch {
-            status = .error("Maestro started but web UI is not responding on port \(port).")
+            // Check if the process is still running — if so, it's probably still starting up
+            if processManager.isRunning {
+                status = .error("Maestro is still starting (port \(port) not ready). Try Restart.")
+            } else {
+                status = .error("Maestro failed to start. Check logs.")
+            }
         }
     }
 
