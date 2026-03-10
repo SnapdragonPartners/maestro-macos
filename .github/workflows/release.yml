@@ -28,6 +28,7 @@ jobs:
         run: |
           VERSION="${MAESTRO_VERSION#v}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
@@ -101,7 +102,7 @@ jobs:
             CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
             DEVELOPMENT_TEAM=VNJH3VB68C \
             MARKETING_VERSION="${VERSION}" \
-            CURRENT_PROJECT_VERSION="${VERSION}" \
+            CURRENT_PROJECT_VERSION="${BUILD_NUMBER}" \
             archive
 
       - name: Export archive
@@ -210,7 +211,7 @@ jobs:
           fi
 
           # Insert new item before closing </channel> tag
-          NEW_ITEM="    <item>\n      <title>Maestro App Factory ${MAESTRO_VERSION}</title>\n      <pubDate>$(date -R)</pubDate>\n      <sparkle:version>${VERSION}</sparkle:version>\n      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>\n      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>\n      <description><![CDATA[<p>Maestro App Factory for Maestro ${MAESTRO_VERSION}</p>]]></description>\n      <enclosure url=\"${DMG_URL}\" length=\"${DMG_SIZE}\" type=\"application/octet-stream\" sparkle:edSignature=\"${SIGNATURE}\" />\n    </item>"
+          NEW_ITEM="    <item>\n      <title>Maestro App Factory ${MAESTRO_VERSION}</title>\n      <pubDate>$(date -R)</pubDate>\n      <sparkle:version>${BUILD_NUMBER}</sparkle:version>\n      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>\n      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>\n      <description><![CDATA[<p>Maestro App Factory for Maestro ${MAESTRO_VERSION}</p>]]></description>\n      <enclosure url=\"${DMG_URL}\" length=\"${DMG_SIZE}\" type=\"application/octet-stream\" sparkle:edSignature=\"${SIGNATURE}\" />\n    </item>"
 
           # Use python for reliable XML insertion
           python3 -c "
@@ -220,7 +221,7 @@ jobs:
           item = '''    <item>
                 <title>Maestro App Factory ${MAESTRO_VERSION}</title>
                 <pubDate>$(date -R)</pubDate>
-                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:version>${BUILD_NUMBER}</sparkle:version>
                 <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
                 <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
                 <description><![CDATA[<p>Maestro App Factory for Maestro ${MAESTRO_VERSION}</p>]]></description>

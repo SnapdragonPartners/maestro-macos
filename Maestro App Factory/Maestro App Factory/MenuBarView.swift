@@ -41,8 +41,8 @@ struct MenuBarView: View {
                 .disabled(true)
         }
 
-        if let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String {
-            Button("\u{1F4E6} control panel v\(appVersion)") {}
+        if let buildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String {
+            Button("\u{1F4E6} control panel build \(buildNumber)") {}
                 .disabled(true)
         }
 
