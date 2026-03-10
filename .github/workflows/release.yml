@@ -101,6 +101,7 @@ jobs:
             CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
             DEVELOPMENT_TEAM=VNJH3VB68C \
             MARKETING_VERSION="${VERSION}" \
+            CURRENT_PROJECT_VERSION="${VERSION}" \
             archive
 
       - name: Export archive
