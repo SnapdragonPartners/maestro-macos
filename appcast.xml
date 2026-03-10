@@ -4,25 +4,7 @@
     <title>Maestro App Factory</title>
     <link>https://snapdragonpartners.github.io/maestro-macos/appcast.xml</link>
     <description>Maestro App Factory Updates</description>
-      <item>
-      <title>Maestro App Factory v1.3.3</title>
-      <pubDate>Mon, 09 Mar 2026 22:16:34 +0000</pubDate>
-      <sparkle:version>1.3.3</sparkle:version>
-      <sparkle:shortVersionString>1.3.3</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Maestro App Factory for Maestro v1.3.3</p>]]></description>
-      <enclosure url="https://github.com/SnapdragonPartners/maestro-macos/releases/download/v1.3.3/MaestroAppFactory-v1.3.3.dmg" length="22769262" type="application/octet-stream" sparkle:edSignature="Jt6Sf9jQogXE7iD7BwpbA855i4YAXtbgPjzVAehtSHfSC1d8d2gnNwyNjtmqBjII3OHDGyPfZSgbo0Z0DEafDQ==" />
-    </item>
-      <item>
-      <title>Maestro App Factory v1.3.3</title>
-      <pubDate>Tue, 10 Mar 2026 00:56:22 +0000</pubDate>
-      <sparkle:version>1.3.3</sparkle:version>
-      <sparkle:shortVersionString>1.3.3</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<p>Maestro App Factory for Maestro v1.3.3</p>]]></description>
-      <enclosure url="https://github.com/SnapdragonPartners/maestro-macos/releases/download/v1.3.3/MaestroAppFactory-v1.3.3.dmg" length="22770941" type="application/octet-stream" sparkle:edSignature="RDqgrNvuxCZt/TWRjCHeYT9y0tSG1+KMby96AGSYKXiLwhH7QJtQUM2ZJxKvCtwBhPPXpf2vOQqNcSBIL8nZBQ==" />
-    </item>
-      <item>
+    <item>
       <title>Maestro App Factory v1.3.3</title>
       <pubDate>Tue, 10 Mar 2026 00:59:31 +0000</pubDate>
       <sparkle:version>1.3.3</sparkle:version>
