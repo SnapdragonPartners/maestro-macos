@@ -115,7 +115,7 @@ class ProcessManager {
     private static func resolveUserEnvironment() -> [String: String] {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        proc.arguments = ["-l", "-c", "env"]
+        proc.arguments = ["-l", "-i", "-c", "env"]
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = FileHandle.nullDevice
