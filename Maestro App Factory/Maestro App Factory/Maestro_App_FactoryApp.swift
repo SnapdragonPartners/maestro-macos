@@ -31,6 +31,11 @@ struct Maestro_App_FactoryApp: App {
     }
 
     init() {
+        // Give the delegate a reference to ProcessManager for cleanup on quit
+        DispatchQueue.main.async { [self] in
+            self.appDelegate.processManager = self.appState.processManager
+        }
+
         // Schedule first launch after a brief delay to let SwiftUI set up
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
             Task { @MainActor in
