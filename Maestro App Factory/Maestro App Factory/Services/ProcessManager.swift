@@ -32,10 +32,13 @@ class ProcessManager {
         env["MAESTRO_PASSWORD"] = password
         env["MAESTRO_SESSION_TOKEN"] = sessionToken
 
-        // When launched from Finder/DMG, PATH is minimal and won't include
-        // Docker or Homebrew paths. Resolve the user's real PATH via login shell.
-        if let shellPath = Self.resolveUserPath() {
-            env["PATH"] = shellPath
+        // When launched from Finder/DMG, the environment is minimal — no PATH,
+        // no API keys, etc. Resolve the user's full shell environment.
+        let shellEnv = Self.resolveUserEnvironment()
+        for (key, value) in shellEnv {
+            if env[key] == nil {
+                env[key] = value
+            }
         }
 
         proc.environment = env
@@ -114,13 +117,12 @@ class ProcessManager {
         }
     }
 
-    /// Resolve the user's full PATH by running a login shell.
-    /// This ensures we get the same PATH the user would have in Terminal,
-    /// including Homebrew, Docker, etc.
-    private static func resolveUserPath() -> String? {
+    /// Resolve the user's full shell environment by running a login shell.
+    /// This ensures we get PATH, API keys, and everything else from .zshrc/.zprofile.
+    private static func resolveUserEnvironment() -> [String: String] {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        proc.arguments = ["-l", "-c", "echo $PATH"]
+        proc.arguments = ["-l", "-c", "env"]
         let pipe = Pipe()
         proc.standardOutput = pipe
         proc.standardError = FileHandle.nullDevice
@@ -128,12 +130,20 @@ class ProcessManager {
             try proc.run()
             proc.waitUntilExit()
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !path.isEmpty {
-                return path
+            guard let output = String(data: data, encoding: .utf8) else { return [:] }
+            var env: [String: String] = [:]
+            for line in output.components(separatedBy: "\n") {
+                guard let eqIndex = line.firstIndex(of: "=") else { continue }
+                let key = String(line[line.startIndex..<eqIndex])
+                let value = String(line[line.index(after: eqIndex)...])
+                if !key.isEmpty {
+                    env[key] = value
+                }
             }
-        } catch {}
-        return nil
+            return env
+        } catch {
+            return [:]
+        }
     }
 
     func waitForPort(_ port: Int, timeout: TimeInterval = 300) async throws {
