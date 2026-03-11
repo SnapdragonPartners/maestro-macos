@@ -169,6 +169,35 @@ jobs:
 
           xcrun stapler staple "$DMG_PATH"
 
+      - name: Upload DMG to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+        run: |
+          # Install AWS CLI
+          brew install awscli
+
+          # Upload versioned copy
+          aws s3 cp "$DMG_PATH" \
+            "s3://maestroappfactory/releases/${MAESTRO_VERSION}/MaestroAppFactory.dmg" \
+            --endpoint-url "$R2_ENDPOINT_URL" \
+            --content-type "application/x-apple-diskimage"
+
+          # Overwrite the stable "latest" pointer
+          aws s3 cp "$DMG_PATH" \
+            "s3://maestroappfactory/releases/latest/MaestroAppFactory.dmg" \
+            --endpoint-url "$R2_ENDPOINT_URL" \
+            --content-type "application/x-apple-diskimage"
+
+          # Drop metadata so the website can show version info
+          echo "{\"version\":\"${MAESTRO_VERSION}\",\"date\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" \
+            > latest.json
+          aws s3 cp latest.json \
+            "s3://maestroappfactory/releases/latest/metadata.json" \
+            --endpoint-url "$R2_ENDPOINT_URL" \
+            --content-type "application/json"
+
       - name: Generate Sparkle appcast
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
