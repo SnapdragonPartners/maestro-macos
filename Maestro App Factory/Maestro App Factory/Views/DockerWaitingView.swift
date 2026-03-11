@@ -42,6 +42,9 @@ struct DockerWaitingView: View {
                     .foregroundStyle(.tertiary)
             }
 
+            Text("[Don't have Docker? Get it free here.](https://www.docker.com/products/docker-desktop/)")
+                .font(.caption)
+
             Divider()
 
             Button(action: onQuit) {
