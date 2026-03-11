@@ -13,7 +13,7 @@ struct Maestro_App_FactoryApp: App {
     private let updaterController = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     var body: some Scene {
-        MenuBarExtra("Maestro", systemImage: menuBarIcon) {
+        MenuBarExtra("Maestro", image: menuBarIcon) {
             MenuBarView(
                 appState: appState,
                 updater: updaterController.updater,
@@ -24,9 +24,6 @@ struct Maestro_App_FactoryApp: App {
                 onStop: stopMaestro,
                 onQuit: quitApp
             )
-        }
-        .onChange(of: appDelegate.onLaunch == nil) {
-            // Trigger startup once the app delegate is wired up
         }
     }
 
@@ -45,16 +42,7 @@ struct Maestro_App_FactoryApp: App {
     }
 
     private var menuBarIcon: String {
-        switch appState.status {
-        case .running:
-            return "circle.fill"
-        case .starting, .stopping:
-            return "circle.dotted"
-        case .stopped:
-            return "circle"
-        case .error:
-            return "exclamationmark.circle"
-        }
+        appState.isRunning ? "MenuBarIcon" : "MenuBarIconOff"
     }
 
     // MARK: - First Launch
