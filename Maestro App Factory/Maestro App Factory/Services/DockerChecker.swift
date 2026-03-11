@@ -3,7 +3,6 @@
 //  Maestro App Factory
 //
 
-import AppKit
 import Foundation
 
 enum DockerStatus {
@@ -41,29 +40,4 @@ struct DockerChecker {
         }
     }
 
-    static func showNotInstalledAlert() {
-        let alert = NSAlert()
-        alert.messageText = "Docker Required"
-        alert.informativeText = "Maestro requires Docker Desktop to run. Please install Docker Desktop and try again."
-        alert.alertStyle = .critical
-        alert.addButton(withTitle: "Open Docker Website")
-        alert.addButton(withTitle: "Cancel")
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(string: "https://www.docker.com/products/docker-desktop/")!)
-        }
-    }
-
-    static func showNotRunningAlert() {
-        let alert = NSAlert()
-        alert.messageText = "Docker Not Running"
-        alert.informativeText = "Docker Desktop is installed but not running. Please start Docker Desktop and try again."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Open Docker Desktop")
-        alert.addButton(withTitle: "Cancel")
-
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Docker.app"))
-        }
-    }
 }

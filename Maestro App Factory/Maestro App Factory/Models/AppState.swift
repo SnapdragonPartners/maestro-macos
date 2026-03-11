@@ -91,19 +91,11 @@ class AppState {
         // Get version
         maestroVersion = Self.queryVersion()
 
-        // Check Docker
-        let dockerStatus = await DockerChecker.check()
-        switch dockerStatus {
-        case .notInstalled:
-            DockerChecker.showNotInstalledAlert()
+        // Wait for Docker (polls with a visible window if not ready)
+        let dockerReady = await waitForDocker()
+        if !dockerReady {
             status = .stopped
             return
-        case .notRunning:
-            DockerChecker.showNotRunningAlert()
-            status = .stopped
-            return
-        case .ready:
-            break
         }
 
         // Read port from Maestro config
@@ -161,6 +153,55 @@ class AppState {
             }
         } catch {}
         return nil
+    }
+
+    /// Checks Docker availability. If not ready, shows a waiting window and polls every 3 seconds.
+    /// Returns true when Docker is ready, or false if the user quits.
+    private func waitForDocker() async -> Bool {
+        let initialStatus = await DockerChecker.check()
+        if initialStatus == .ready { return true }
+
+        // Show a waiting window
+        let window = Self.createDockerWaitingWindow(isInstalled: initialStatus != .notInstalled)
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        // Poll every 3 seconds for up to ~10 minutes
+        for _ in 0..<200 {
+            try? await Task.sleep(for: .seconds(3))
+
+            // If user closed the window or quit, stop waiting
+            if !window.isVisible { return false }
+
+            if await DockerChecker.check() == .ready {
+                window.close()
+                return true
+            }
+        }
+
+        window.close()
+        return false
+    }
+
+    private static func createDockerWaitingWindow(isInstalled: Bool) -> NSWindow {
+        let view = DockerWaitingView(isInstalled: isInstalled) {
+            NSApplication.shared.terminate(nil)
+        }
+        let hostingView = NSHostingView(rootView: view)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 380, height: 340)
+
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Maestro"
+        window.contentView = hostingView
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+        return window
     }
 
     func stopMaestro() {
