@@ -7,6 +7,11 @@ on:
         description: 'Maestro release tag (e.g. v1.3.3)'
         required: true
         type: string
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
 
 jobs:
   build:
@@ -15,20 +20,32 @@ jobs:
       contents: write
       pages: write
 
-    env:
-      MAESTRO_VERSION: ${{ github.event.inputs.maestro_version }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Parse version
+      - name: Resolve Maestro version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          if [[ -n "${{ github.event.inputs.maestro_version }}" ]]; then
+            # Triggered by workflow_dispatch — use provided version
+            MAESTRO_VERSION="${{ github.event.inputs.maestro_version }}"
+          else
+            # Triggered by push — use the latest release tag
+            MAESTRO_VERSION=$(gh release view --repo SnapdragonPartners/maestro-macos --json tagName -q .tagName 2>/dev/null || echo "")
+            if [[ -z "$MAESTRO_VERSION" ]]; then
+              echo "ERROR: Could not determine Maestro version from latest release"
+              exit 1
+            fi
+          fi
+          echo "MAESTRO_VERSION=$MAESTRO_VERSION" >> $GITHUB_ENV
           VERSION="${MAESTRO_VERSION#v}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "BUILD_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "Building with Maestro $MAESTRO_VERSION (build ${{ github.run_number }})"
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
