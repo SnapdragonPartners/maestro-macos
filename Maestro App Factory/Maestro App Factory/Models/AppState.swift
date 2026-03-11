@@ -16,7 +16,9 @@ enum MaestroStatus: Equatable {
 
 @Observable
 class AppState {
-    var status: MaestroStatus = .stopped
+    var status: MaestroStatus = .stopped {
+        didSet { updateDockVisibility() }
+    }
     var projectDirectory: URL? {
         didSet {
             if let url = projectDirectory {
@@ -51,6 +53,9 @@ class AppState {
                 self.projectDirectory = url
             }
         }
+
+        // Show dock icon on launch (safety net for discoverability)
+        updateDockVisibility()
 
         processManager.onTermination = { [weak self] reason, status in
             guard let self else { return }
@@ -204,6 +209,15 @@ class AppState {
         window.isReleasedWhenClosed = false
         window.level = .floating
         return window
+    }
+
+    /// Show dock icon when Maestro isn't running so the app is always discoverable/quittable.
+    /// Hide it when running to reduce dock clutter.
+    private func updateDockVisibility() {
+        let policy: NSApplication.ActivationPolicy = isRunning ? .accessory : .regular
+        DispatchQueue.main.async {
+            NSApplication.shared.setActivationPolicy(policy)
+        }
     }
 
     func stopMaestro() {
