@@ -51,14 +51,14 @@ struct Maestro_App_FactoryApp: App {
     @MainActor
     private func firstLaunch() async {
         if appState.projectDirectory == nil {
-            showDirectoryPicker()
+            appState.showDirectoryPicker()
         }
         if appState.projectDirectory != nil {
             await appState.startMaestro()
         } else {
             // No directory selected — show startup window so app is always visible
             appState.appendLog("No project directory selected.")
-            appState.appendLog("Use the menu bar icon (top right) to select a project, or quit.")
+            appState.appendLog("Select a project directory to get started, or quit.")
             appState.showStartupWindow()
         }
     }
@@ -91,25 +91,12 @@ struct Maestro_App_FactoryApp: App {
             }
         }
 
-        showDirectoryPicker()
+        appState.showDirectoryPicker()
 
         if appState.projectDirectory != nil {
             Task {
                 await appState.restartMaestro()
             }
-        }
-    }
-
-    private func showDirectoryPicker() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.message = "Select your Maestro project directory"
-
-        if panel.runModal() == .OK, let url = panel.url {
-            appState.projectDirectory = url
         }
     }
 

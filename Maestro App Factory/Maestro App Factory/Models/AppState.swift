@@ -57,9 +57,13 @@ class AppState {
         processManager.onTermination = { [weak self] reason, status in
             guard let self else { return }
             if self.status == .running {
-                // Unexpected termination
+                // Unexpected termination — re-show startup window so user sees the error
                 self.appendLog("Maestro exited unexpectedly (code \(status))")
                 self.status = .error("Maestro exited unexpectedly (code \(status))")
+                self.appendLog("Use the menu bar icon to restart, or quit.")
+                DispatchQueue.main.async {
+                    self.showStartupWindow()
+                }
             } else if self.status != .stopping && self.status != .starting {
                 self.status = .stopped
             }
@@ -106,6 +110,22 @@ class AppState {
     func closeStartupWindow() {
         startupWindow?.close()
         startupWindow = nil
+    }
+
+    // MARK: - Directory Picker
+
+    @MainActor
+    func showDirectoryPicker() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.message = "Select your Maestro project directory"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            projectDirectory = url
+        }
     }
 
     // MARK: - Password

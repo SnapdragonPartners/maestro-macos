@@ -9,6 +9,12 @@ struct StartupLogView: View {
     var appState: AppState
     let onQuit: () -> Void
 
+    private var showRestart: Bool {
+        if case .error = appState.status { return true }
+        if case .stopped = appState.status { return true }
+        return false
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             Spacer().frame(height: 4)
@@ -73,12 +79,41 @@ struct StartupLogView: View {
 
             Divider()
 
-            Button(action: onQuit) {
-                Text("Quit Maestro")
-                    .frame(maxWidth: .infinity)
+            HStack(spacing: 12) {
+                if showRestart {
+                    Button {
+                        Task {
+                            await appState.restartMaestro()
+                        }
+                    } label: {
+                        Text("Restart")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+
+                    Button {
+                        appState.showDirectoryPicker()
+                        if appState.projectDirectory != nil {
+                            Task {
+                                await appState.restartMaestro()
+                            }
+                        }
+                    } label: {
+                        Text("Change Project...")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+
+                Button(action: onQuit) {
+                    Text("Quit")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
 
             Spacer().frame(height: 4)
         }
