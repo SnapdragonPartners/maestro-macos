@@ -15,6 +15,7 @@ struct MenuBarView: View {
     var onSelectDirectory: () -> Void
     var onRestart: () -> Void
     var onStop: () -> Void
+    var onAbout: () -> Void
     var onQuit: () -> Void
 
     private var statusLine: String {
@@ -35,16 +36,6 @@ struct MenuBarView: View {
     var body: some View {
         Button(statusLine) {}
             .disabled(true)
-
-        if let version = appState.maestroVersion {
-            Button("\u{2139}\u{FE0F} \(version)") {}
-                .disabled(true)
-        }
-
-        if let buildNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String {
-            Button("\u{1F4E6} control panel build \(buildNumber)") {}
-                .disabled(true)
-        }
 
         if let dir = appState.projectDirectory {
             Button("\u{1F4C2} \(dir.lastPathComponent)") {}
@@ -84,6 +75,10 @@ struct MenuBarView: View {
         Divider()
 
         CheckForUpdatesView(updater: updater)
+
+        Button("About Maestro") {
+            onAbout()
+        }
 
         Button("Quit") {
             onQuit()

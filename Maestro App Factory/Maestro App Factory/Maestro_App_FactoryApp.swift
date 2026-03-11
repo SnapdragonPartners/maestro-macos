@@ -22,6 +22,7 @@ struct Maestro_App_FactoryApp: App {
                 onSelectDirectory: selectDirectory,
                 onRestart: restartMaestro,
                 onStop: stopMaestro,
+                onAbout: showAbout,
                 onQuit: quitApp
             )
         }
@@ -115,6 +116,28 @@ struct Maestro_App_FactoryApp: App {
 
     private func stopMaestro() {
         appState.stopMaestro()
+    }
+
+    private func showAbout() {
+        let aboutView = AboutView(
+            maestroVersion: appState.maestroVersion,
+            controlPanelBuild: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        )
+        let hostingView = NSHostingView(rootView: aboutView)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 380, height: 440)
+
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "About Maestro"
+        window.contentView = hostingView
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func quitApp() {
