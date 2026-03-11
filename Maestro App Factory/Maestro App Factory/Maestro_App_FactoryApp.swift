@@ -55,6 +55,11 @@ struct Maestro_App_FactoryApp: App {
         }
         if appState.projectDirectory != nil {
             await appState.startMaestro()
+        } else {
+            // No directory selected — show startup window so app is always visible
+            appState.appendLog("No project directory selected.")
+            appState.appendLog("Use the menu bar icon (top right) to select a project, or quit.")
+            appState.showStartupWindow()
         }
     }
 

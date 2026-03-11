@@ -16,9 +16,7 @@ enum MaestroStatus: Equatable {
 
 @Observable
 class AppState {
-    var status: MaestroStatus = .stopped {
-        didSet { updateDockVisibility() }
-    }
+    var status: MaestroStatus = .stopped
     var projectDirectory: URL? {
         didSet {
             if let url = projectDirectory {
@@ -34,6 +32,8 @@ class AppState {
     let processManager = ProcessManager()
 
     var hasOpenedWebUI = false
+    var startupLog: [String] = []
+    private var startupWindow: NSWindow?
 
     var webUIURL: URL? {
         if hasOpenedWebUI {
@@ -54,19 +54,61 @@ class AppState {
             }
         }
 
-        // Show dock icon on launch (safety net for discoverability)
-        updateDockVisibility()
-
         processManager.onTermination = { [weak self] reason, status in
             guard let self else { return }
             if self.status == .running {
                 // Unexpected termination
+                self.appendLog("Maestro exited unexpectedly (code \(status))")
                 self.status = .error("Maestro exited unexpectedly (code \(status))")
             } else if self.status != .stopping && self.status != .starting {
                 self.status = .stopped
             }
         }
     }
+
+    // MARK: - Startup Log & Window
+
+    func appendLog(_ message: String) {
+        startupLog.append(message)
+    }
+
+    @MainActor
+    func showStartupWindow() {
+        if let existing = startupWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let view = StartupLogView(appState: self) {
+            NSApplication.shared.terminate(nil)
+        }
+        let hostingView = NSHostingView(rootView: view)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 420, height: 400)
+
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Maestro"
+        window.contentView = hostingView
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        startupWindow = window
+    }
+
+    @MainActor
+    func closeStartupWindow() {
+        startupWindow?.close()
+        startupWindow = nil
+    }
+
+    // MARK: - Password
 
     func resolvePassword() -> String {
         // 1. Check system env var
@@ -88,31 +130,51 @@ class AppState {
         return generated
     }
 
+    // MARK: - Lifecycle
+
     func startMaestro() async {
         guard let projectDir = projectDirectory else { return }
 
+        startupLog = []
         status = .starting
 
-        // Get version
-        maestroVersion = Self.queryVersion()
+        await showStartupWindow()
 
-        // Wait for Docker (polls with a visible window if not ready)
+        appendLog("Starting Maestro...")
+        appendLog("Project: \(projectDir.path)")
+
+        // Get version
+        appendLog("Checking Maestro version...")
+        maestroVersion = Self.queryVersion()
+        if let version = maestroVersion {
+            appendLog("Version: \(version)")
+        } else {
+            appendLog("Warning: Could not determine Maestro version")
+        }
+
+        // Wait for Docker
+        appendLog("Checking Docker...")
         let dockerReady = await waitForDocker()
         if !dockerReady {
+            appendLog("Startup cancelled.")
             status = .stopped
             return
         }
+        appendLog("Docker is ready.")
 
         // Read port from Maestro config
         port = ConfigReader.readPort(projectDirectory: projectDir)
+        appendLog("Port: \(port)")
 
         // Resolve password and generate session token
         let pass = resolvePassword()
         let token = SessionTokenGenerator.generate()
         sessionToken = token
         hasOpenedWebUI = false
+        appendLog("Credentials configured.")
 
         // Launch process
+        appendLog("Launching Maestro process...")
         do {
             try processManager.start(
                 projectDirectory: projectDir,
@@ -120,20 +182,29 @@ class AppState {
                 sessionToken: token
             )
         } catch {
+            appendLog("Error: \(error.localizedDescription)")
             status = .error(error.localizedDescription)
             return
         }
 
+        appendLog("Process launched. Waiting for server on port \(port)...")
+
         // Wait for server to be ready (may take a while on first run due to Docker image build)
         do {
             try await processManager.waitForPort(port)
+            appendLog("Maestro is running!")
             status = .running
+            await closeStartupWindow()
         } catch {
             // Check if the process is still running — if so, it's probably still starting up
             if processManager.isRunning {
-                status = .error("Maestro is still starting (port \(port) not ready). Try Restart.")
+                let msg = "Maestro is still starting (port \(port) not ready). Try Restart."
+                appendLog(msg)
+                status = .error(msg)
             } else {
-                status = .error("Maestro failed to start. Check logs.")
+                let msg = "Maestro failed to start. Check logs."
+                appendLog(msg)
+                status = .error(msg)
             }
         }
     }
@@ -160,64 +231,41 @@ class AppState {
         return nil
     }
 
-    /// Checks Docker availability. If not ready, shows a waiting window and polls every 3 seconds.
-    /// Returns true when Docker is ready, or false if the user quits.
+    /// Checks Docker availability. If not ready, logs status and polls every 3 seconds.
+    /// Returns true when Docker is ready, or false if the user closes the startup window.
     @MainActor
     private func waitForDocker() async -> Bool {
         let initialStatus = await DockerChecker.check()
         if initialStatus == .ready { return true }
 
-        // Show a waiting window
-        let window = Self.createDockerWaitingWindow(isInstalled: initialStatus != .notInstalled)
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if initialStatus == .notInstalled {
+            appendLog("Docker not found. Please install Docker Desktop.")
+            appendLog("Download: https://www.docker.com/products/docker-desktop/")
+        } else {
+            appendLog("Docker is not running. Please start Docker Desktop.")
+        }
+        appendLog("Waiting for Docker...")
 
         // Poll every 3 seconds for up to ~10 minutes
-        for _ in 0..<200 {
+        for i in 0..<200 {
             try? await Task.sleep(for: .seconds(3))
 
-            // If user closed the window or quit, stop waiting
-            if !window.isVisible { return false }
+            // If user closed the startup window, stop waiting
+            if startupWindow == nil || !(startupWindow?.isVisible ?? false) {
+                return false
+            }
 
             if await DockerChecker.check() == .ready {
-                window.close()
                 return true
+            }
+
+            if i > 0 && (i + 1) % 10 == 0 {
+                appendLog("Still waiting for Docker... (\((i + 1) * 3)s)")
             }
         }
 
-        window.close()
+        appendLog("Timed out waiting for Docker.")
         return false
-    }
-
-    @MainActor
-    private static func createDockerWaitingWindow(isInstalled: Bool) -> NSWindow {
-        let view = DockerWaitingView(isInstalled: isInstalled) {
-            NSApplication.shared.terminate(nil)
-        }
-        let hostingView = NSHostingView(rootView: view)
-        hostingView.frame = NSRect(x: 0, y: 0, width: 380, height: 340)
-
-        let window = NSWindow(
-            contentRect: hostingView.frame,
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "Maestro"
-        window.contentView = hostingView
-        window.center()
-        window.isReleasedWhenClosed = false
-        window.level = .floating
-        return window
-    }
-
-    /// Show dock icon when Maestro isn't running so the app is always discoverable/quittable.
-    /// Hide it when running to reduce dock clutter.
-    private func updateDockVisibility() {
-        let policy: NSApplication.ActivationPolicy = isRunning ? .accessory : .regular
-        DispatchQueue.main.async {
-            NSApplication.shared.setActivationPolicy(policy)
-        }
     }
 
     func stopMaestro() {

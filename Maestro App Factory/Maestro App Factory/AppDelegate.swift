@@ -16,10 +16,4 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         processManager?.stop()
     }
-
-    /// When user clicks the dock icon, activate the app so the menu bar is discoverable
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        NSApp.activate(ignoringOtherApps: true)
-        return false
-    }
 }
