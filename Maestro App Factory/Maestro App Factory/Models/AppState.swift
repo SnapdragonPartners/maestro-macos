@@ -157,6 +157,7 @@ class AppState {
 
     /// Checks Docker availability. If not ready, shows a waiting window and polls every 3 seconds.
     /// Returns true when Docker is ready, or false if the user quits.
+    @MainActor
     private func waitForDocker() async -> Bool {
         let initialStatus = await DockerChecker.check()
         if initialStatus == .ready { return true }
@@ -183,6 +184,7 @@ class AppState {
         return false
     }
 
+    @MainActor
     private static func createDockerWaitingWindow(isInstalled: Bool) -> NSWindow {
         let view = DockerWaitingView(isInstalled: isInstalled) {
             NSApplication.shared.terminate(nil)
