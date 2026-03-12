@@ -79,8 +79,8 @@ struct StartupLogView: View {
 
             Divider()
 
-            HStack(spacing: 12) {
-                if showRestart {
+            if showRestart {
+                HStack(spacing: 12) {
                     Button {
                         Task {
                             await appState.restartMaestro()
@@ -107,6 +107,19 @@ struct StartupLogView: View {
                     .controlSize(.large)
                 }
 
+                if appState.projectDirectory != nil {
+                    Button {
+                        appState.showLogViewer()
+                    } label: {
+                        Text("View Maestro Log...")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+            }
+
+            HStack(spacing: 12) {
                 Button(action: onQuit) {
                     Text("Quit")
                         .frame(maxWidth: .infinity)
@@ -120,4 +133,5 @@ struct StartupLogView: View {
         .padding(.horizontal, 20)
         .frame(width: 420)
     }
+
 }

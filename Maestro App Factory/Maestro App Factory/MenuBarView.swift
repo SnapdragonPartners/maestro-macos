@@ -15,6 +15,7 @@ struct MenuBarView: View {
     var onSelectDirectory: () -> Void
     var onRestart: () -> Void
     var onStop: () -> Void
+    var onViewLog: () -> Void
     var onAbout: () -> Void
     var onQuit: () -> Void
 
@@ -73,6 +74,11 @@ struct MenuBarView: View {
         .disabled(!appState.isRunning)
 
         Divider()
+
+        Button("\u{1F4DC} View Log...") {
+            onViewLog()
+        }
+        .disabled(appState.projectDirectory == nil)
 
         CheckForUpdatesView(updater: updater)
 

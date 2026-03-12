@@ -22,6 +22,7 @@ struct Maestro_App_FactoryApp: App {
                 onSelectDirectory: selectDirectory,
                 onRestart: restartMaestro,
                 onStop: stopMaestro,
+                onViewLog: showLogViewer,
                 onAbout: showAbout,
                 onQuit: quitApp
             )
@@ -108,6 +109,10 @@ struct Maestro_App_FactoryApp: App {
 
     private func stopMaestro() {
         appState.stopMaestro()
+    }
+
+    private func showLogViewer() {
+        appState.showLogViewer()
     }
 
     private func showAbout() {

@@ -34,6 +34,7 @@ class AppState {
     var hasOpenedWebUI = false
     var startupLog: [String] = []
     private var startupWindow: NSWindow?
+    private var logViewerWindow: NSWindow?
 
     var webUIURL: URL? {
         if hasOpenedWebUI {
@@ -110,6 +111,40 @@ class AppState {
     func closeStartupWindow() {
         startupWindow?.close()
         startupWindow = nil
+    }
+
+    // MARK: - Log Viewer
+
+    @MainActor
+    func showLogViewer() {
+        // Singleton — bring existing window forward if open
+        if let existing = logViewerWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        guard let projectDir = projectDirectory else { return }
+        let logPath = projectDir.appendingPathComponent(".maestro/logs/maestro.log").path
+
+        let view = LogViewerView(logPath: logPath)
+        let hostingView = NSHostingView(rootView: view)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 700, height: 500)
+
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Maestro Log"
+        window.contentView = hostingView
+        window.contentMinSize = NSSize(width: 400, height: 300)
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        logViewerWindow = window
     }
 
     // MARK: - Directory Picker

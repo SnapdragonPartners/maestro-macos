@@ -39,7 +39,6 @@ class ProcessManager {
         proc.standardOutput = logFile
         proc.standardError = logFile
 
-        // Create a new process group so we can kill all children
         proc.qualityOfService = .userInitiated
 
         proc.terminationHandler = { [weak self] process in
@@ -71,18 +70,46 @@ class ProcessManager {
         // Send SIGINT first (Go handles graceful shutdown on interrupt)
         kill(pid, SIGINT)
 
-        // Wait synchronously for up to 5 seconds
-        proc.waitUntilExit()
+        // Give it up to 5 seconds to exit gracefully
+        let deadline = Date().addingTimeInterval(5)
+        while proc.isRunning && Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
 
-        // If it somehow didn't exit, force kill
+        // If still running, force kill
         if proc.isRunning {
-            kill(-pid, SIGKILL)
             kill(pid, SIGKILL)
             proc.waitUntilExit()
         }
 
+        // Kill any orphaned child processes
+        Self.killChildProcesses(parentPID: pid)
+
         isRunning = false
         process = nil
+    }
+
+    /// Find and kill all child processes of the given PID
+    private static func killChildProcesses(parentPID: pid_t) {
+        let pipe = Pipe()
+        let pgrep = Process()
+        pgrep.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
+        pgrep.arguments = ["-P", "\(parentPID)"]
+        pgrep.standardOutput = pipe
+        pgrep.standardError = FileHandle.nullDevice
+
+        do {
+            try pgrep.run()
+            pgrep.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8) {
+                for line in output.split(separator: "\n") {
+                    if let childPID = pid_t(line.trimmingCharacters(in: .whitespaces)) {
+                        kill(childPID, SIGKILL)
+                    }
+                }
+            }
+        } catch {}
     }
 
     /// Async stop that waits for the process to fully terminate and the port to be released
