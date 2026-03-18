@@ -175,6 +175,10 @@ class ProcessManager {
         let session = URLSession(configuration: config)
 
         while Date().timeIntervalSince(start) < timeout {
+            // Bail early if the process has already died
+            if !isRunning {
+                throw ProcessError.processExited
+            }
             do {
                 let (_, response) = try await session.data(from: url)
                 if let http = response as? HTTPURLResponse, http.statusCode > 0 {
@@ -192,6 +196,7 @@ class ProcessManager {
 enum ProcessError: LocalizedError {
     case binaryNotFound
     case portTimeout(Int)
+    case processExited
 
     var errorDescription: String? {
         switch self {
@@ -199,6 +204,8 @@ enum ProcessError: LocalizedError {
             return "Maestro binary not found in app bundle."
         case .portTimeout(let port):
             return "Maestro failed to start on port \(port)."
+        case .processExited:
+            return "Maestro process exited before the server became ready."
         }
     }
 }

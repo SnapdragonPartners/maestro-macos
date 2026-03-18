@@ -58,14 +58,18 @@ class AppState {
         processManager.onTermination = { [weak self] reason, status in
             guard let self else { return }
             if self.status == .running {
-                // Unexpected termination — re-show startup window so user sees the error
+                // Unexpected termination while running — show error
                 self.appendLog("Maestro exited unexpectedly (code \(status))")
                 self.status = .error("Maestro exited unexpectedly (code \(status))")
                 self.appendLog("Use the menu bar icon to restart, or quit.")
                 DispatchQueue.main.async {
                     self.showStartupWindow()
                 }
-            } else if self.status != .stopping && self.status != .starting {
+            } else if self.status == .starting {
+                // Crashed during startup — waitForPort will detect isRunning == false
+                // and throw processExited, but log the crash immediately so the user sees it
+                self.appendLog("Maestro process exited during startup (code \(status))")
+            } else if self.status != .stopping {
                 self.status = .stopped
             }
         }
