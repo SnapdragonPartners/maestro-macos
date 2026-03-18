@@ -51,6 +51,14 @@ struct Maestro_App_FactoryApp: App {
 
     @MainActor
     private func firstLaunch() async {
+        if appState.needsOnboarding {
+            await withCheckedContinuation { continuation in
+                appState.showWelcome {
+                    continuation.resume()
+                }
+            }
+        }
+
         if appState.projectDirectory == nil {
             appState.showDirectoryPicker()
         }

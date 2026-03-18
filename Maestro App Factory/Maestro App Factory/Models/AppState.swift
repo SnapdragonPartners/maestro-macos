@@ -35,6 +35,7 @@ class AppState {
     var startupLog: [String] = []
     private var startupWindow: NSWindow?
     private var logViewerWindow: NSWindow?
+    private var welcomeWindow: NSWindow?
 
     var webUIURL: URL? {
         if hasOpenedWebUI {
@@ -149,6 +150,46 @@ class AppState {
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         logViewerWindow = window
+    }
+
+    // MARK: - Welcome / Onboarding
+
+    var needsOnboarding: Bool {
+        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+        let completedVersion = UserDefaults.standard.string(forKey: "onboardingCompletedVersion")
+        return completedVersion != currentVersion
+    }
+
+    func completeOnboarding() {
+        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+        UserDefaults.standard.set(currentVersion, forKey: "onboardingCompletedVersion")
+    }
+
+    @MainActor
+    func showWelcome(completion: @escaping () -> Void) {
+        let view = WelcomeView {
+            self.completeOnboarding()
+            self.welcomeWindow?.close()
+            self.welcomeWindow = nil
+            completion()
+        }
+        let hostingView = NSHostingView(rootView: view)
+        hostingView.frame = NSRect(x: 0, y: 0, width: 480, height: 620)
+
+        let window = NSWindow(
+            contentRect: hostingView.frame,
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Welcome to Maestro"
+        window.contentView = hostingView
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.level = .floating
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        welcomeWindow = window
     }
 
     // MARK: - Directory Picker
