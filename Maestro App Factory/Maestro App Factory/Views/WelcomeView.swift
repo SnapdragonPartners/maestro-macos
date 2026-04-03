@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct WelcomeView: View {
+    @Bindable var appState: AppState
     let onGetStarted: () -> Void
 
     var body: some View {
@@ -76,6 +77,27 @@ struct WelcomeView: View {
                     }
                     .padding(.leading, 40)
                     .padding(.top, -12)
+
+                    Divider()
+
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "chart.bar.fill")
+                            .font(.title3)
+                            .foregroundStyle(.blue)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Help Improve Maestro")
+                                .font(.headline)
+                            Text("Share anonymous usage data to help us improve Maestro. No personal information, code, or API keys are ever collected. You can change this at any time in the menu bar.")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Toggle("Send anonymous telemetry", isOn: $appState.telemetryEnabled)
+                                .toggleStyle(.switch)
+                        }
+                    }
 
                 }
                 .padding(24)

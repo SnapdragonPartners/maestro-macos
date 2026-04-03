@@ -13,7 +13,7 @@ class ProcessManager {
 
     var onTermination: ((Process.TerminationReason, Int32) -> Void)?
 
-    func start(projectDirectory: URL, password: String, sessionToken: String) throws {
+    func start(projectDirectory: URL, password: String, sessionToken: String, telemetryEnabled: Bool) throws {
         guard !isRunning else { return }
 
         guard let binaryURL = Bundle.main.url(forResource: "maestro", withExtension: nil) else {
@@ -25,7 +25,10 @@ class ProcessManager {
 
         let proc = Process()
         proc.executableURL = binaryURL
-        proc.arguments = ["-projectdir", projectDirectory.path]
+        proc.arguments = [
+            "-projectdir", projectDirectory.path,
+            "--telemetry=\(telemetryEnabled)"
+        ]
 
         // The shell environment (from login shell) is the base — it has PATH,
         // API keys, and everything the user would have in Terminal.

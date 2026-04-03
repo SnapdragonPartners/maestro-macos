@@ -80,6 +80,8 @@ struct MenuBarView: View {
         }
         .disabled(appState.projectDirectory == nil)
 
+        Toggle("\u{1F4CA} Send Telemetry", isOn: $appState.telemetryEnabled)
+
         CheckForUpdatesView(updater: updater)
 
         Button("About Maestro") {

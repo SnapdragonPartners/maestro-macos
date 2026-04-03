@@ -28,6 +28,11 @@ class AppState {
     var sessionToken: String?
     var password: String?
     var maestroVersion: String?
+    var telemetryEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(telemetryEnabled, forKey: "telemetryEnabled")
+        }
+    }
 
     let processManager = ProcessManager()
 
@@ -49,6 +54,9 @@ class AppState {
     var isStarting: Bool { status == .starting }
 
     init() {
+        // Load telemetry preference (defaults to true for new users)
+        self.telemetryEnabled = UserDefaults.standard.object(forKey: "telemetryEnabled") as? Bool ?? true
+
         if let path = UserDefaults.standard.string(forKey: "projectDirectory") {
             let url = URL(fileURLWithPath: path)
             if FileManager.default.fileExists(atPath: path) {
@@ -167,7 +175,7 @@ class AppState {
 
     @MainActor
     func showWelcome(completion: @escaping () -> Void) {
-        let view = WelcomeView {
+        let view = WelcomeView(appState: self) {
             self.completeOnboarding()
             self.welcomeWindow?.close()
             self.welcomeWindow = nil
@@ -279,7 +287,8 @@ class AppState {
             try processManager.start(
                 projectDirectory: projectDir,
                 password: pass,
-                sessionToken: token
+                sessionToken: token,
+                telemetryEnabled: telemetryEnabled
             )
         } catch {
             appendLog("Error: \(error.localizedDescription)")
