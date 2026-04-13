@@ -32,9 +32,12 @@ class ProcessManager {
 
         // The shell environment (from login shell) is the base — it has PATH,
         // API keys, and everything the user would have in Terminal.
-        // We only add MAESTRO_PASSWORD and MAESTRO_SESSION_TOKEN on top.
+        // Only set MAESTRO_PASSWORD if the shell env doesn't already have it,
+        // so that a user's explicit export takes precedence over the Keychain.
         var env = Self.resolveUserEnvironment()
-        env["MAESTRO_PASSWORD"] = password
+        if env["MAESTRO_PASSWORD"] == nil || env["MAESTRO_PASSWORD"]!.isEmpty {
+            env["MAESTRO_PASSWORD"] = password
+        }
         env["MAESTRO_SESSION_TOKEN"] = sessionToken
 
         proc.environment = env
